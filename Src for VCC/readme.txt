@@ -1,0 +1,1 @@
+这个文件夹内的文件适配锂电池改装款价签，使用时删掉本txt文件并用这个src文件夹内所有文件替换Stellar-L3N-Etag项目源代码firmware中的src中所有文件并运行makeit.exe编译
