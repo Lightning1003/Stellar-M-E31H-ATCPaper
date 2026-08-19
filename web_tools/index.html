@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="content-type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>电子价签蓝牙控制器</title>
+	<style>
+		/* ===== Design Tokens ===== */
+		:root {
+			--primary: #4f6ef7;
+			--primary-hover: #3b57e0;
+			--primary-soft: #eef1fe;
+			--success: #22c55e;
+			--success-soft: #ecfdf5;
+			--danger: #ef4444;
+			--danger-soft: #fef2f2;
+			--warning: #f59e0b;
+			--warning-soft: #fffbeb;
+			--bg: #f8fafc;
+			--surface: #ffffff;
+			--surface-2: #f1f5f9;
+			--border: #e2e8f0;
+			--border-strong: #cbd5e1;
+			--text: #1e293b;
+			--text-secondary: #64748b;
+			--text-muted: #94a3b8;
+			--radius: 10px;
+			--radius-sm: 6px;
+			--shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+			--shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+			--shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -4px rgba(0,0,0,.04);
+			--transition: all .2s ease;
+			--font: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', system-ui, -apple-system, sans-serif;
+			--font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+		}
+		/* ===== Reset & Base ===== */
+		*, *::before, *::after {
+			box-sizing: border-box;
+			padding: 0;
+			margin: 0;
+		}
+		body {
+			font-family: var(--font);
+			background: var(--bg);
+			color: var(--text);
+			line-height: 1.6;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+		}
+		/* ===== Top Navigation Bar ===== */
+		.top-bar {
+			background: var(--surface);
+			border-bottom: 1px solid var(--border);
+			padding: 14px 28px;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			position: sticky;
+			top: 0;
+			z-index: 100;
+			box-shadow: var(--shadow-sm);
+		}
+		.top-bar .brand {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.top-bar .brand-icon {
+			width: 32px;
+			height: 32px;
+			background: linear-gradient(135deg, var(--primary), #7c3aed);
+			border-radius: 8px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: #fff;
+			font-size: 16px;
+			font-weight: 700;
+		}
+		.top-bar h1 {
+			font-size: 18px;
+			font-weight: 600;
+			color: var(--text);
+			letter-spacing: -.3px;
+		}
+		.top-bar .nav-links {
+			display: flex;
+			gap: 6px;
+		}
+		.top-bar .nav-links a {
+			padding: 6px 14px;
+			border-radius: var(--radius-sm);
+			color: var(--text-secondary);
+			text-decoration: none;
+			font-size: 13px;
+			font-weight: 500;
+			transition: var(--transition);
+		}
+		.top-bar .nav-links a:hover {
+			background: var(--surface-2);
+			color: var(--text);
+		}
+		/* ===== Connection Status Badge ===== */
+		.connection-bar {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 12px 28px;
+			background: var(--surface);
+			border-bottom: 1px solid var(--border);
+		}
+		.status-dot {
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			background: var(--text-muted);
+			transition: var(--transition);
+		}
+		.status-dot.connected {
+			background: var(--success);
+			box-shadow: 0 0 0 3px var(--success-soft);
+		}
+		.status-dot.connecting {
+			background: var(--warning);
+			box-shadow: 0 0 0 3px var(--warning-soft);
+		}
+		.status-text {
+			font-size: 13px;
+			color: var(--text-secondary);
+			font-weight: 500;
+		}
+		.device-name {
+			font-size: 13px;
+			color: var(--text-muted);
+		}
+		/* ===== Main Content ===== */
+		.main-content {
+			flex: 1;
+			padding: 24px 28px;
+			max-width: 1200px;
+			width: 100%;
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: 1fr 340px;
+			gap: 24px;
+			align-items: start;
+		}
+		/* ===== Card Component ===== */
+		.card {
+			background: var(--surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow-sm);
+			overflow: hidden;
+			margin-bottom: 20px;
+		}
+		.card-header {
+			padding: 16px 20px;
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 10px;
+		}
+		.card-header h3 {
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--text);
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.card-header h3 .icon {
+			width: 22px;
+			height: 22px;
+			border-radius: 6px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 12px;
+		}
+		.icon-blue { background: var(--primary-soft); color: var(--primary); }
+		.icon-green { background: var(--success-soft); color: var(--success); }
+		.icon-red { background: var(--danger-soft); color: var(--danger); }
+		.icon-amber { background: var(--warning-soft); color: var(--warning); }
+		.icon-gray { background: var(--surface-2); color: var(--text-secondary); }
+		.card-body {
+			padding: 18px 20px;
+		}
+		/* ===== Buttons ===== */
+		.btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			padding: 8px 16px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			background: var(--surface);
+			color: var(--text);
+			font-size: 13px;
+			font-weight: 500;
+			font-family: var(--font);
+			cursor: pointer;
+			transition: var(--transition);
+			line-height: 1.4;
+			white-space: nowrap;
+		}
+		.btn:hover {
+			background: var(--surface-2);
+			border-color: var(--border-strong);
+		}
+		.btn:active {
+			transform: translateY(1px);
+		}
+		.btn-primary {
+			background: var(--primary);
+			border-color: var(--primary);
+			color: #fff;
+		}
+		.btn-primary:hover {
+			background: var(--primary-hover);
+			border-color: var(--primary-hover);
+		}
+		.btn-success {
+			background: var(--success);
+			border-color: var(--success);
+			color: #fff;
+		}
+		.btn-success:hover {
+			background: #16a34a;
+			border-color: #16a34a;
+		}
+		.btn-danger {
+			background: var(--danger);
+			border-color: var(--danger);
+			color: #fff;
+		}
+		.btn-danger:hover {
+			background: #dc2626;
+			border-color: #dc2626;
+		}
+		.btn-outline {
+			background: transparent;
+		}
+		.btn-sm {
+			padding: 5px 12px;
+			font-size: 12px;
+		}
+		.btn-group {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+		}
+		/* ===== Form Controls ===== */
+		.input-group {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+		}
+		.input-group label {
+			font-size: 13px;
+			color: var(--text-secondary);
+			font-weight: 500;
+			white-space: nowrap;
+		}
+		input[type="text"],
+		input[type="number"] {
+			padding: 7px 12px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			font-size: 13px;
+			font-family: var(--font);
+			color: var(--text);
+			background: var(--surface);
+			transition: var(--transition);
+			outline: none;
+		}
+		input[type="text"]:focus,
+		input[type="number"]:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		input[type="number"] {
+			width: 70px;
+		}
+		select {
+			padding: 7px 32px 7px 12px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			font-size: 13px;
+			font-family: var(--font);
+			color: var(--text);
+			background: var(--surface);
+			cursor: pointer;
+			transition: var(--transition);
+			outline: none;
+			appearance: none;
+			-webkit-appearance: none;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 10px center;
+		}
+		select:focus {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		input[type="file"] {
+			font-size: 13px;
+			color: var(--text-secondary);
+			max-width: 100%;
+		}
+		input[type="file"]::file-selector-button {
+			padding: 6px 14px;
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			background: var(--surface-2);
+			color: var(--text);
+			font-size: 12px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: var(--transition);
+			margin-right: 10px;
+			font-family: var(--font);
+		}
+		input[type="file"]::file-selector-button:hover {
+			background: var(--border);
+		}
+		/* ===== Canvas Area ===== */
+		.canvas-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 16px;
+			padding: 20px;
+			background: var(--surface-2);
+			border-radius: var(--radius-sm);
+			border: 1px dashed var(--border-strong);
+		}
+		#canvas {
+			border: 2px solid var(--border);
+			border-radius: var(--radius-sm);
+			background: #fff;
+			cursor: crosshair;
+			max-width: 100%;
+			height: auto;
+			box-shadow: var(--shadow);
+		}
+		#canvas:hover {
+			border-color: var(--primary);
+		}
+		/* ===== Right Sidebar ===== */
+		.sidebar {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+		.sidebar .card {
+			margin-bottom: 0;
+		}
+		/* ===== Tool Bar (canvas tools) ===== */
+		.tool-bar {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 10px;
+			padding: 12px 16px;
+			background: var(--surface-2);
+			border-radius: var(--radius-sm);
+			margin-bottom: 14px;
+		}
+		.tool-bar label {
+			font-size: 12px;
+			color: var(--text-secondary);
+			font-weight: 500;
+			white-space: nowrap;
+		}
+		.tool-bar select,
+		.tool-bar input {
+			padding: 5px 10px;
+			font-size: 12px;
+		}
+		/* ===== Color Picker Swatches ===== */
+		.color-swatches {
+			display: flex;
+			gap: 6px;
+		}
+		.color-swatch {
+			width: 24px;
+			height: 24px;
+			border-radius: 50%;
+			border: 2px solid var(--border);
+			cursor: pointer;
+			transition: var(--transition);
+			padding: 0;
+		}
+		.color-swatch:hover {
+			transform: scale(1.1);
+		}
+		.color-swatch.active {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 2px var(--primary-soft);
+		}
+		/* ===== Divider ===== */
+		.divider {
+			height: 1px;
+			background: var(--border);
+			margin: 14px 0;
+		}
+		/* ===== 替换浮动框：侧边固定文本输入域 ===== */
+		.text-input-wrap {
+			width: 100%;
+			display: none;
+			flex-direction: column;
+			gap:8px;
+			margin:8px 0;
+		}
+		#text-area {
+			width:100%;
+			height:120px;
+			padding:8px;
+			border:1px solid var(--border);
+			border-radius:var(--radius-sm);
+			resize:vertical;
+			font-size:13px;
+		}
+		/* ===== Log Panel (Collapsible Bottom) ===== */
+		.log-panel {
+			border-top: 1px solid var(--border);
+			background: var(--surface);
+			transition: var(--transition);
+		}
+		.log-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 12px 28px;
+			cursor: pointer;
+			user-select: none;
+			transition: var(--transition);
+		}
+		.log-header:hover {
+			background: var(--surface-2);
+		}
+		.log-header-left {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+		.log-header h3 {
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--text);
+		}
+		.log-count {
+			background: var(--primary-soft);
+			color: var(--primary);
+			font-size: 11px;
+			font-weight: 600;
+			padding: 2px 8px;
+			border-radius: 10px;
+		}
+		.log-toggle-icon {
+			width: 20px;
+			height: 20px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--text-muted);
+			transition: transform .3s ease;
+		}
+		.log-panel.collapsed .log-toggle-icon {
+			transform: rotate(180deg);
+		}
+		.log-panel.collapsed .log-body {
+			display: none;
+		}
+		.log-body {
+			padding: 0 28px 20px;
+		}
+		.log-toolbar {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			margin-bottom: 10px;
+		}
+		.log-toolbar .btn-group {
+			gap: 6px;
+		}
+		#log {
+			width: 100%;
+			height: 220px;
+			overflow-y: auto;
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			padding: 14px 16px;
+			font-family: var(--font-mono);
+			font-size: 12px;
+			line-height: 1.8;
+			color: var(--text);
+			background: #fafbfc;
+			white-space: pre-wrap;
+			word-break: break-all;
+		}
+		#log::-webkit-scrollbar {
+			width: 6px;
+		}
+		#log::-webkit-scrollbar-track {
+			background: transparent;
+		}
+		#log::-webkit-scrollbar-thumb {
+			background: var(--border-strong);
+			border-radius: 3px;
+		}
+		#log::-webkit-scrollbar-thumb:hover {
+			background: var(--text-muted);
+		}
+		/* ===== Time Setter Button ===== */
+		.time-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			padding: 10px 18px;
+			background: linear-gradient(135deg, var(--primary-soft), #f0fdf4);
+			border: 1px solid var(--border);
+			border-radius: var(--radius-sm);
+			color: var(--text);
+			font-size: 13px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: var(--transition);
+			font-family: var(--font);
+		}
+		.time-btn:hover {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		/* ===== Responsive ===== */
+		@media (max-width: 960px) {
+			.main-content {
+				grid-template-columns: 1fr;
+				padding: 16px;
+			}
+			.sidebar {
+				order: -1;
+			}
+			.top-bar {
+				padding: 12px 16px;
+			}
+			.connection-bar {
+				padding: 10px 16px;
+			}
+			.log-header {
+				padding: 10px 16px;
+			}
+			.log-body {
+				padding: 0 16px 16px;
+			}
+		}
+		/* ===== Utility ===== */
+		.text-muted { color: var(--text-muted); }
+		.text-sm { font-size: 12px; }
+		.mt-8 { margin-top: 8px; }
+		.mt-12 { margin-top: 12px; }
+		.mb-8 { margin-bottom: 8px; }
+		.flex { display: flex; }
+		.flex-wrap { flex-wrap: wrap; }
+		.align-center { align-items: center; }
+		.gap-8 { gap: 8px; }
+		.gap-12 { gap: 12px; }
+		/* ===== Upload Area ===== */
+		.upload-area {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 16px;
+			background: var(--surface-2);
+			border: 1px dashed var(--border-strong);
+			border-radius: var(--radius-sm);
+			margin-bottom: 14px;
+			flex-wrap: wrap;
+		}
+		/* ===== Section Description ===== */
+		.section-desc {
+			font-size: 12px;
+			color: var(--text-muted);
+			margin-bottom: 10px;
+		}
+		/* ===== Highlight for important action ===== */
+		.primary-action {
+			margin-top: 16px;
+			text-align: center;
+			padding: 16px;
+			background: linear-gradient(135deg, var(--primary-soft), #faf5ff);
+			border-radius: var(--radius-sm);
+			border: 1px solid #e0e7ff;
+		}
+		.primary-action .btn {
+			padding: 12px 32px;
+			font-size: 15px;
+			font-weight: 600;
+		}
+	</style>
+	<script>
+		function hexToBytes(hex) {for (var bytes = [], c = 0; c < hex.length; c += 2)bytes.push(parseInt(hex.substr(c, 2), 16));return new Uint8Array(bytes);}
+		function bytesToHex(data) {return new Uint8Array(data).reduce(function (memo, i) {return memo + ("0" + i.toString(16)).slice(-2);}, "");}
+		function intToHex(intIn, bytes=4) {return intIn.toString(16).padStart(bytes * 2, '0');}
+		const bwrPalette = [[0, 0, 0, 255],[255, 255, 255, 255],[255, 0, 0, 255]]
+		const bwPalette = [[0, 0, 0, 255],[255, 255, 255, 255],]
+		function dithering(ctx, width, height, threshold, type) {
+  			const bayerThresholdMap = [[  15, 135,  45, 165 ],[ 195,  75, 225, 105 ],[  60, 180,  30, 150 ],[ 240, 120, 210,  90 ]];
+  			const lumR = [];
+  			const lumG = [];
+  			const lumB = [];
+ 			for (let i=0; i<256; i++) {
+				lumR[i] = i*0.299;
+				lumG[i] = i*0.587;
+				lumB[i] = i*0.114;
+			}
+  			const imageData = ctx.getImageData(0, 0, width, height);
+			const imageDataLength = imageData.data.length;
+			for (let i = 0; i <= imageDataLength; i += 4) {
+				imageData.data[i] = Math.floor(lumR[imageData.data[i]] + lumG[imageData.data[i+1]] + lumB[imageData.data[i+2]]);
+			}
+			const w = imageData.width;
+			let newPixel, err;
+			for (let currentPixel = 0; currentPixel <= imageDataLength; currentPixel+=4) {
+				if (type ==="none") {
+					imageData.data[currentPixel] = imageData.data[currentPixel] < threshold ? 0 : 255;
+				} else if (type ==="bayer") {
+					var x = currentPixel/4 % w;
+					var y = Math.floor(currentPixel/4 / w);
+					var map = Math.floor( (imageData.data[currentPixel] + bayerThresholdMap[x%4][y%4]) / 2 );
+					imageData.data[currentPixel] = (map < threshold) ? 0 : 255;
+				} else if (type ==="floydsteinberg") {
+					newPixel = imageData.data[currentPixel] < 129 ? 0 : 255;
+					err = Math.floor((imageData.data[currentPixel] - newPixel) / 16);
+					imageData.data[currentPixel] = newPixel;
+					imageData.data[currentPixel       + 4 ] += err*7;
+					imageData.data[currentPixel + 4*w - 4 ] += err*3;
+					imageData.data[currentPixel + 4*w     ] += err*5;
+					imageData.data[currentPixel + 4*w + 4 ] += err*1;
+				} else {
+					newPixel = imageData.data[currentPixel] < threshold ? 0 : 255;
+					err = Math.floor((imageData.data[currentPixel] - newPixel) / 8);
+					imageData.data[currentPixel] = newPixel;
+					imageData.data[currentPixel       + 4 ] += err;
+					imageData.data[currentPixel       + 8 ] += err;
+					imageData.data[currentPixel + 4*w - 4 ] += err;
+					imageData.data[currentPixel + 4*w     ] += err;
+					imageData.data[currentPixel + 4*w + 4 ] += err;
+					imageData.data[currentPixel + 8*w     ] += err;
+				}
+				imageData.data[currentPixel + 1] = imageData.data[currentPixel + 2] = imageData.data[currentPixel];
+			}
+			ctx.putImageData(imageData, 0, 0);
+		}
+		function canvas2bytes(canvas, type='bw') {
+			const ctx = canvas.getContext("2d");
+			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+			const arr = [];
+			let buffer = [];
+			for (let x = canvas.width - 1; x >= 0; x--) {
+				for (let y = 0; y < canvas.height; y++) {
+					const index = (canvas.width * 4 * y) + x * 4;
+					if (type !== 'bwr') {
+						buffer.push(imageData.data[index] > 0 && imageData.data[index+1] > 0 && imageData.data[index+2] > 0 ? 1 : 0);
+					} else {
+						buffer.push(imageData.data[index] > 0 && imageData.data[index+1] === 0 && imageData.data[index+2] === 0 ? 1 : 0);
+					}
+				if (buffer.length === 8) {
+					arr.push(parseInt(buffer.join(''), 2));
+					buffer = [];
+				}
+			}
+		}
+		return arr;
+	}
+	function getColorDistance(rgba1, rgba2) {
+	  const [r1, b1, g1] = rgba1;
+	  const [r2, b2, g2] = rgba2;
+	  const rm = (r1 + r2 ) / 2;
+	  const r = r1 - r2;
+	  const g = g1 - g2;
+	  const b = b1 - b2;
+	  return Math.sqrt((2 + rm / 256) * r * r + 4 * g * g + (2 + (255 - rm) / 256) * b * b);
+	}
+	function getNearColor(pixel, palette) {
+	  let minDistance = 255 * 255 * 3 + 1;
+	  let paletteIndex = 0;
+	  for (let i = 0; i < palette.length; i++) {
+	    const targetColor = palette[i];
+	    const distance = getColorDistance(pixel, targetColor);
+	    if (distance < minDistance) {
+	      minDistance = distance;
+	      paletteIndex = i;
+	    }
+	  }
+	  return palette[paletteIndex];
+	}
+	function getNearColorV2(color, palette) {
+	  let minDistanceSquared = 255 * 255 + 255 * 255 + 255 * 255 + 1;
+	  let bestIndex = 0;
+	  for (let i = 0; i < palette.length; i++) {
+	      let rdiff = (color[0] & 0xff) - (palette[i][0] & 0xff);
+	      let gdiff = (color[1] & 0xff) - (palette[i][1] & 0xff);
+	      let bdiff = (color[2] & 0xff) - (palette[i][2] & 0xff);
+	      let distanceSquared = rdiff*rdiff + gdiff*gdiff + bdiff*bdiff;
+	      if (distanceSquared < minDistanceSquared) {
+	          minDistanceSquared = distanceSquared;
+	          bestIndex = i;
+	      }
+	  }
+	  return palette[bestIndex];
+	}
+	function updatePixel(imageData, index, color) {
+	  imageData[index] = color[0];
+	  imageData[index+1] = color[1];
+	  imageData[index+2] = color[2];
+	  imageData[index+3] = color[3];
+	}
+	function getColorErr(color1, color2, rate) {
+	  const res = [];
+	  for (let i = 0; i < 3; i++) {
+	    res.push(Math.floor((color1[i] - color2[i]) / rate));
+	  }
+	  return res;
+	}
+	function updatePixelErr(imageData, index, err, rate) {
+	  imageData[index] += err[0] * rate;
+	  imageData[index+1] += err[1] * rate;
+	  imageData[index+2] += err[2] * rate;
+	}
+	function ditheringCanvasByPalette(canvas, palette, type) {
+	  palette = palette || bwrPalette;
+	  const ctx = canvas.getContext('2d');
+	  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	  const w = imageData.width;
+	  for (let currentPixel = 0; currentPixel <= imageData.data.length; currentPixel+=4) {
+	    const newColor = getNearColorV2(imageData.data.slice(currentPixel, currentPixel+4), palette);
+	    if (type === "bwr_floydsteinberg") {
+	      const err = getColorErr(imageData.data.slice(currentPixel, currentPixel+4), newColor, 16);
+	      updatePixel(imageData.data, currentPixel, newColor);
+	      updatePixelErr(imageData.data, currentPixel +4, err, 7);
+	      updatePixelErr(imageData.data, currentPixel + 4*w - 4, err, 3);
+	      updatePixelErr(imageData.data, currentPixel + 4*w, err, 5);
+	      updatePixelErr(imageData.data, currentPixel + 4*w + 4, err, 1);
+	    } else {
+	      const err = getColorErr(imageData.data.slice(currentPixel, currentPixel+4), newColor, 8);
+	      updatePixel(imageData.data, currentPixel, newColor);
+	      updatePixelErr(imageData.data, currentPixel +4, err, 1);
+	      updatePixelErr(imageData.data, currentPixel +8, err, 1);
+	      updatePixelErr(imageData.data, currentPixel +4 * w - 4, err, 1);
+	      updatePixelErr(imageData.data, currentPixel +4 * w, err, 1);
+	      updatePixelErr(imageData.data, currentPixel +4 * w + 4, err, 1);
+	      updatePixelErr(imageData.data, currentPixel +8 * w, err, 1);
+	    }
+	  }
+	  ctx.putImageData(imageData, 0, 0);
+	}
+	// ===== 硬性二值化（文字模式专用，不走抖动）=====
+	function binarizeCanvas(canvas) {
+		const ctx = canvas.getContext('2d');
+		const threshold = parseInt(document.getElementById('threshold').value) || 125;
+		const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		const data = imageData.data;
+		for (let i = 0; i < data.length; i += 4) {
+			const gray = Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+			const val = gray < threshold ? 0 : 255;
+			data[i] = data[i + 1] = data[i + 2] = val;
+		}
+		ctx.putImageData(imageData, 0, 0);
+	}
+	</script>
+</head>
+<body>
+	<!-- ===== Top Navigation ===== -->
+	<header class="top-bar">
+		<div class="brand">
+			<div class="brand-icon">电</div>
+			<h1>电子价签蓝牙控制器</h1>
+		</div>
+		<nav class="nav-links">
+			<a href="uart_flasher.html">🔌 串口升级</a>
+			<a href="ATC_TLSR_PaperBLEcontrol.html">📡 蓝牙OTA升级</a>
+		</nav>
+	</header>
+	<!-- ===== Connection Status Bar ===== -->
+	<div class="connection-bar">
+		<div class="status-dot" id="status-dot"></div>
+		<span class="status-text" id="status-text">未连接</span>
+		<span class="device-name" id="device-name"></span>
+		<div style="flex:1"></div>
+		<div class="btn-group">
+			<button class="btn btn-primary btn-sm" id="connectbutton" onclick="preConnect();">🔗 连接设备</button>
+			<button class="btn btn-sm" onclick="reConnect();">🔄 重连</button>
+		</div>
+	</div>
+	<!-- ===== Main Content ===== -->
+	<main class="main-content">
+		<!-- ===== Left Column ===== -->
+		<div class="left-column">
+			<!-- Command Control Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-blue">⌘</span> 指令控制</h3>
+				</div>
+				<div class="card-body">
+					<div class="input-group mb-8">
+						<label for="cmdTXT">自定义指令:</label>
+						<input type="text" id="cmdTXT" value="0055" style="width:120px;">
+						<button class="btn btn-sm" onclick="triggerEpdCmd(document.getElementById('cmdTXT').value);">📤 发送</button>
+					</div>
+					<div class="divider"></div>
+					<div class="btn-group">
+						<button class="btn btn-sm" onclick="triggerRxTxCmd('e100')" title="图片将永久显示到屏幕上">🖼️ 图片模式</button>
+						<button class="btn btn-sm" onclick="triggerRxTxCmd('e101')" title="切换为时钟模式">🕐 时钟模式1</button>
+						<button class="btn btn-sm" onclick="triggerRxTxCmd('e102')" title="切换为时钟模式">🕐 时钟模式2</button>
+						<button class="btn btn-sm btn-danger" onclick="clearScreen('00')">⬛ 清屏全黑</button>
+						<button class="btn btn-sm" onclick="clearScreen('ff')" style="border-color:#d1d5db">⬜ 清屏全白</button>
+					</div>
+					<div class="btn-group mt-8">
+						<button class="btn btn-sm btn-primary" onclick="triggerEpdCmd('0101')">🔄 全屏刷新</button>
+						<button class="btn btn-sm" onclick="triggerEpdCmd('0100')">✏️ 局部刷新</button>
+					</div>
+				</div>
+			</div>
+			<!-- Image Upload Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-green">🖼️</span> 图片上传</h3>
+				</div>
+				<div class="card-body">
+					<div class="upload-area">
+						<input type="file" id="image_file" onchange="update_image()" accept=".png,.jpg,.bmp,.webp">
+					</div>
+					<div class="tool-bar">
+						<label>抖动算法:</label>
+						<select id="dithering" title="抖动算法">
+							<optgroup label="黑白">
+								<option value="none">二值化</option>
+								<option value="bayer">Bayer</option>
+								<option value="floydsteinberg">Floyd-Steinberg</option>
+								<option value="Atkinson">Atkinson</option>
+							</optgroup>
+							<optgroup label="黑白红多色">
+								<option value="bwr_floydsteinberg">BWR Floyd-Steinberg</option>
+								<option value="bwr_Atkinson">BWR Atkinson</option>
+							</optgroup>
+						</select>
+						<label>阈值:</label>
+						<input type="number" max="255" min="0" value="125" id="threshold" style="width:60px;">
+						<button class="btn btn-sm" onclick="update_image()">🔃 重新处理</button>
+					</div>
+					<!-- Canvas Tool Bar -->
+					<div class="tool-bar">
+						<label>模式:</label>
+						<select id="canvas-mode">
+							<option value="paint">✏️ 画笔</option>
+							<option value="font">🔤 文字</option>
+						</select>
+						<label>大小:</label>
+						<input type="number" max="13" min="1" step="1" value="3" id="paint-size" style="width:55px;">
+						<label>颜色:</label>
+						<select id="paint-color">
+							<option value="black">⚫ 黑</option>
+							<option value="red">🔴 红</option>
+							<option value="white">⚪ 白</option>
+						</select>
+						<select id="font" title="字体" style="display:none;">
+							<option value="微软雅黑">微软雅黑</option>
+							<option value="黑体">黑体</option>
+							<option value="仿宋">仿宋</option>
+							<option value="宋体">宋体</option>
+							<option value="楷体_GB2312">楷体</option>
+							<option value="华文行楷">华文行楷</option>
+						</select>
+						<button class="btn btn-sm" id="update-text" style="display:none">💾 保存文字到画布</button>
+						<button class="btn btn-sm btn-danger" onclick="clear_canvas()" style="margin-left:auto">🗑️ 清屏</button>
+					</div>
+					<!-- 新增固定多行文本输入框，替代乱飘悬浮框 -->
+					<div class="text-input-wrap" id="text-wrap">
+						<label>多行文字（左上角逐行绘制）：</label>
+						<textarea id="text-area" placeholder="输入文字，回车换行"></textarea>
+					</div>
+					<!-- Canvas -->
+					<div class="canvas-container">
+						<canvas id="canvas" width="296" height="128"></canvas>
+					</div>
+					<!-- Primary Upload Action -->
+					<div class="primary-action">
+						<button class="btn btn-primary" onclick="upload_image()" style="min-width:200px;">
+							⬆️ 立即上传到屏幕
+						</button>
+					</div>
+				</div>
+			</div>
+			<!-- Screen Buffer Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-gray">📋</span> 屏幕数据</h3>
+				</div>
+				<div class="card-body">
+					<div class="upload-area">
+						<input type="file" id="buffer_file">
+					</div>
+					<div class="btn-group">
+						<button class="btn btn-sm" onclick="upload_epd_buffer();">📤 上传到显示器内存</button>
+					</div>
+					<details style="margin-top:12px;">
+						<summary style="cursor:pointer;font-size:12px;color:var(--text-muted);">查看/编辑 Hex 缓冲区</summary>
+						<textarea id="buffer" rows="6" style="width:100%;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;resize:vertical;"></textarea>
+					</details>
+				</div>
+			</div>
+		</div>
+		<!-- ===== Right Sidebar ===== -->
+		<aside class="sidebar">
+			<!-- Time Setting Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-amber">🕐</span> 时间设置</h3>
+				</div>
+				<div class="card-body">
+					<button class="time-btn" id="time-setter" onclick="setTime()">
+						⏰ <span>设置时间为: --</span>
+					</button>
+					<div class="input-group mt-12">
+						<label>时区偏移:</label>
+						<input type="number" max="24" min="-24" id="hour-offset" value="0">
+						<span class="text-sm text-muted">小时</span>
+					</div>
+				</div>
+			</div>
+			<!-- Quick Actions Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-red">⚡</span> 快捷操作</h3>
+				</div>
+				<div class="card-body">
+					<div class="btn-group">
+						<button class="btn btn-sm btn-success" onclick="triggerRxTxCmd('e100')">🖼️ 进入图片模式</button>
+						<button class="btn btn-sm" onclick="triggerEpdCmd('0101')">🔄 刷新屏幕</button>
+					</div>
+					<p class="section-desc mt-8">提示：先选择模式，再上传图片或刷新屏幕。</p>
+				</div>
+			</div>
+			<!-- Connection Info Card -->
+			<div class="card">
+				<div class="card-header">
+					<h3><span class="icon icon-blue">ℹ️</span> 连接信息</h3>
+				</div>
+				<div class="card-body">
+					<p class="text-sm text-muted" id="conn-info">点击上方"连接设备"按钮开始蓝牙配对。</p>
+				</div>
+			</div>
+		</aside>
+	</main>
+	<!-- ===== Collapsible Log Panel (Bottom) ===== -->
+	<section class="log-panel" id="log-panel">
+		<div class="log-header" onclick="toggleLog()">
+			<div class="log-header-left">
+				<span class="log-toggle-icon">▼</span>
+				<h3>📋 运行日志</h3>
+				<span class="log-count" id="log-count">0 条</span>
+			</div>
+			<div class="btn-group" onclick="event.stopPropagation()">
+				<button class="btn btn-sm" onclick="document.getElementById('log').innerHTML='';updateLogCount();">🗑️ 清空</button>
+			</div>
+		</div>
+		<div class="log-body">
+			<div id="log"></div>
+		</div>
+	</section>
+	<script>
+		// ===== Log Panel Toggle =====
+		function toggleLog() {
+			document.getElementById('log-panel').classList.toggle('collapsed');
+		}
+		// ===== Connection Status Update =====
+		function updateConnectionStatus(state, deviceName) {
+			const dot = document.getElementById('status-dot');
+			const text = document.getElementById('status-text');
+			const name = document.getElementById('device-name');
+			const btn = document.getElementById('connectbutton');
+			const info = document.getElementById('conn-info');
+			dot.className = 'status-dot ' + state;
+			if (state === 'connected') {
+				text.textContent = '已连接';
+				name.textContent = deviceName || '';
+				btn.innerHTML = '⏏️ 断开连接';
+				info.innerHTML = `<strong style="color:var(--success)">已连接</strong> ${deviceName || ''}`;
+			} else if (state === 'connecting') {
+				text.textContent = '连接中...';
+				name.textContent = '';
+				btn.innerHTML = '🔗 连接中...';
+				info.textContent = '正在建立蓝牙连接...';
+			} else {
+				text.textContent = '未连接';
+				name.textContent = '';
+				btn.innerHTML = '🔗 连接设备';
+				info.textContent = '点击上方"连接设备"按钮开始蓝牙配对。';
+			}
+		}
+		// ===== Log Counter =====
+		let logCount = 0;
+		function updateLogCount() {
+			const log = document.getElementById('log');
+			const lines = log.innerHTML.split('<br>').filter(l => l.trim());
+			logCount = lines.length;
+			document.getElementById('log-count').textContent = logCount + ' 条';
+		}
+	</script>
+	<script>
+		// ===== Bluetooth Logic =====
+		let bleDevice;
+		let gattServer;
+		let epdService;
+		let rxtxService;
+		let epdCharacteristic;
+		let rxtxCharacteristic;
+		let reconnectTrys = 0;
+		function delay(delayInms) {
+		  return new Promise(resolve => {
+			setTimeout(() => { resolve(2); }, delayInms);
+		  });
+		}
+		function resetVariables() {
+			gattServer = null;
+			epdService = null;
+			epdCharacteristic = null;
+			rxtxCharacteristic = null;
+			rxtxService = null;
+			updateConnectionStatus('disconnected');
+		}
+		async function handleError(error) {
+			console.log(error);
+			resetVariables();
+			if (bleDevice == null) return;
+			if (reconnectTrys <= 5) {
+				reconnectTrys++;
+				addLog(`自动重连 (${reconnectTrys}/5)...`);
+				await connect();
+			} else {
+				addLog("无法连接，已停止重试");
+				reconnectTrys = 0;
+			}
+		}
+		async function sendCommand(cmd) {
+			if (epdCharacteristic) {
+				await epdCharacteristic.writeValueWithResponse(cmd);
+			} else {
+				addLog('⚠️ 服务不可用。蓝牙连接上了吗？');
+			}
+		}
+		async function clearScreen(cmd) {
+			addLog('刷屏中...');
+			await triggerEpdCmd(`00${cmd}`);
+			await triggerEpdCmd('01');
+		}
+		async function rxTxSendCommand(cmd) {
+		  if (rxtxCharacteristic) {
+			await rxtxCharacteristic.writeValueWithResponse(cmd);
+		  } else {
+			  addLog('⚠️ 服务不可用。蓝牙连接上了吗？');
+		  }
+		}
+		async function upload_tiff_image() {
+			const startTime = new Date().getTime();
+			const buffer = await document.getElementById('tiff_file').files[0].arrayBuffer();
+			const arr = bytesToHex(buffer);
+			addLog(`开始上传TIFF, 大小 ${Math.round(arr.length/1024)}KB`);
+			await sendCommand(hexToBytes("0000"));
+			await sendCommand(hexToBytes("020000"));
+			const step = 480;
+			let partIndex = 0;
+			for (let i = 0; i < arr.length; i += step) {
+				addLog(`上传第${partIndex+1}块 (${step+1} byte)`);
+				await sendCommand(hexToBytes("03" + arr.slice(i, i + step)));
+				partIndex += 1;
+			}
+			await sendCommand(hexToBytes("04"));
+			addLog(`✅ TIFF上传完成，耗时${((new Date().getTime() - startTime)/1000).toFixed(1)}s`);
+		}
+		async function sendBufferData(value, type) {
+			addLog(`发送图片模式:${type}, 大小 ${Math.round(value.length/2/1024)}KB`);
+			let code = 'ff';
+			if (type === 'bwr') { code = '00'; }
+			const step = 480;
+			let partIndex = 0;
+			for (let i = 0; i < value.length; i += step) {
+				addLog(`第${partIndex+1}块 起始:${i/2} 大小:${step/2+4}byte`);
+				await sendCommand(hexToBytes("03" + code + intToHex(i / 2, 2) + value.substring(i, i + step)));
+				partIndex += 1;
+			}
+		}
+		async function upload_image() {
+			const canvas = document.getElementById('canvas');
+			// ★ 上传前强制硬性二值化，确保文字模式下的像素干净黑白
+			binarizeCanvas(canvas);
+			const startTime = new Date().getTime();
+			addLog('开始上传图片...');
+			await sendCommand(hexToBytes("0000"));
+			await sendCommand(hexToBytes("020000"));
+			await sendBufferData(bytesToHex(canvas2bytes(canvas)), 'bw');
+			await sendBufferData(bytesToHex(canvas2bytes(canvas, 'bwr')), 'bwr');
+			await sendCommand(hexToBytes("0101"));
+			addLog(`✅ 刷新完成，耗时${((new Date().getTime() - startTime)/1000).toFixed(1)}s`);
+		}
+		async function upload_epd_buffer() {
+			const startTime = new Date().getTime();
+			const value = document.getElementById('buffer').value.replace(/(?:\r\n|\r|\n|,|0x| )/g, '');
+			addLog(`刷新屏幕内存, 大小 ${Math.round(value.length/1024)}KB`);
+			await sendCommand(hexToBytes("0000"));
+			await sendCommand(hexToBytes("020000"));
+			await sendBufferData(value, 'bw');
+			await delay(150);
+			await sendCommand(hexToBytes("0101"));
+			addLog(`✅ 刷新完成，耗时${((new Date().getTime() - startTime)/1000).toFixed(1)}s`);
+		}
+		async function setTime() {
+			const { unixNow, localeTimeString, year, month, day, week } = getUnixTime();
+			addLog(`设置时间: ${localeTimeString} (0x${intToHex(unixNow, 4)})`);
+			await rxTxSendCommand(hexToBytes('dd' +
+				[intToHex(unixNow, 4), intToHex(year, 2), intToHex(month, 1), intToHex(day, 1), intToHex(week, 1)].join('')));
+			await rxTxSendCommand(hexToBytes('e2'));
+			addLog('✅ 时间设置完成');
+		}
+		async function triggerRxTxCmd(cmd) {
+			addLog(`📤 发送指令: ${cmd}`);
+			await rxTxSendCommand(hexToBytes(cmd));
+		}
+		async function triggerEpdCmd(cmd) {
+			addLog(`📤 发送指令: ${cmd}`);
+			await sendCommand(hexToBytes(cmd));
+		}
+		function disconnect() {
+			resetVariables();
+			addLog('🔌 链接已断开');
+		}
+		async function preConnect() {
+			if (gattServer != null && gattServer.connected) {
+				if (bleDevice != null && bleDevice.gatt.connected)
+					bleDevice.gatt.disconnect();
+			} else {
+				reconnectTrys = 0;
+				updateConnectionStatus('connecting');
+				addLog('🔍 搜索蓝牙设备...');
+				try {
+					bleDevice = await navigator.bluetooth.requestDevice({
+						optionalServices: ['0000221f-0000-1000-8000-00805f9b34fb', '00001f10-0000-1000-8000-00805f9b34fb', '13187b10-eba9-a3ba-044e-83d3217d9a38'],
+						acceptAllDevices: true
+					});
+					await bleDevice.addEventListener('gattserverdisconnected', disconnect);
+					await connect();
+				} catch(e) {
+					addLog(`❌ ${e.message || e}`);
+					updateConnectionStatus('disconnected');
+				}
+			}
+		}
+		async function connectRXTX() {
+			rxtxService = await gattServer.getPrimaryService('00001f10-0000-1000-8000-00805f9b34fb');
+			addLog('✓ 找到串口服务');
+			rxtxCharacteristic = await rxtxService.getCharacteristic('00001f1f-0000-1000-8000-00805f9b34fb');
+			addLog('✓ 串口服务已链接');
+		}
+		async function reConnect() {
+			addLog('🔄 重新连接...');
+			if (bleDevice != null && bleDevice.gatt.connected)
+				bleDevice.gatt.disconnect();
+			resetVariables();
+			setTimeout(async function () { await connect(); }, 300);
+		}
+		async function connect() {
+			if (epdCharacteristic == null) {
+				addLog(`正在连接: ${bleDevice.name}`);
+				updateConnectionStatus('connecting', bleDevice.name);
+				gattServer = await bleDevice.gatt.connect();
+				addLog('✓ GATT服务器已连接');
+				epdService = await gattServer.getPrimaryService('13187b10-eba9-a3ba-044e-83d3217d9a38');
+				addLog('✓ 找到EPD服务');
+				epdCharacteristic = await epdService.getCharacteristic('4b646063-6264-f3a7-8941-e65356ea82fe');
+				addLog('✓ EPD特征值已连接');
+				await epdCharacteristic.startNotifications();
+				epdCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+					const count = parseInt('0x'+ bytesToHex(event.target.value.buffer));
+					addLog(`📥 [来自屏幕]: 收到${count} byte数据`);
+				});
+				updateConnectionStatus('connected', bleDevice.name);
+				document.getElementById("connectbutton").innerHTML = '⏏️ 断开连接';
+				await connectRXTX();
+			}
+		}
+		function addLog(logTXT) {
+			const today = new Date();
+			const time = ("0" + today.getHours()).slice(-2) + ":" + ("0" + today.getMinutes()).slice(-2) + ":" + ("0" + today.getSeconds()).slice(-2);
+			const dom = document.getElementById("log");
+			dom.innerHTML += `<span style="color:var(--text-muted)">${time}</span> ${logTXT}<br>`;
+			dom.scrollTop = dom.scrollHeight;
+			updateLogCount();
+		}
+		function getUnixTime() {
+			const hourOffset = document.getElementById('hour-offset').value;
+			const unixNow = Math.round(Date.now() / 1000) + (60 * 60*hourOffset) - new Date().getTimezoneOffset() * 60;
+			const date = new Date((unixNow + new Date().getTimezoneOffset() * 60)*1000);
+			return {unixNow, localeTimeString: date.toLocaleTimeString(), year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate(), week: date.getDay() || 7};
+		}
+		async function update_image () {
+			const image_file = document.getElementById('image_file');
+			if (image_file.files.length > 0) {
+				const file = image_file.files[0];
+				const canvas = document.getElementById("canvas");
+				const ctx = canvas.getContext("2d");
+				const image = new Image();
+				image.src = URL.createObjectURL(file);
+				image.onload = function(event) {
+					URL.revokeObjectURL(this.src);
+					ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvas.width, canvas.height);
+					convert_dithering();
+				}
+			}
+		}
+		function get_position(canvas, x, y){
+			let rect = canvas.getBoundingClientRect();
+			return {
+				x: x - rect.left * (canvas.width/rect.width),
+				y: y - rect.top * (canvas.height/rect.height)
+			}
+		}
+		function clear_canvas() {
+			if(confirm('确认清除画布?')) {
+				const canvas = document.getElementById('canvas');
+				const ctx = canvas.getContext("2d");
+				ctx.fillStyle = 'white';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+			}
+		}
+		function convert_dithering() {
+			const canvas = document.getElementById('canvas');
+			const ctx = canvas.getContext("2d");
+			const mode = document.getElementById('dithering').value;
+			if (mode.startsWith('bwr')) {
+				ditheringCanvasByPalette(canvas, bwrPalette, mode);
+			} else {
+				dithering(ctx, canvas.width, canvas.height, parseInt(document.getElementById('threshold').value), mode);
+			}
+		}
+		// ===== Canvas Drawing Logic =====
+		document.body.onload = () => {
+			setInterval(() => {
+				const { localeTimeString, year, month, day, week } = getUnixTime();
+				document.getElementById('time-setter').innerHTML = `⏰ <span>设置时间为: ${year}-${month}-${day} ${localeTimeString} 星期${week}</span>`;
+			}, 1000);
+			const canvas = document.getElementById('canvas');
+			const ctx = canvas.getContext("2d");
+			ctx.fillStyle = 'white';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			let is_allow_drawing = false;
+			const image_mode = document.getElementById('canvas-mode');
+			const paint_size = document.getElementById('paint-size');
+			const paint_color = document.getElementById('paint-color');
+			const font = document.getElementById('font');
+			const textWrap = document.getElementById('text-wrap');
+			const textArea = document.getElementById('text-area');
+			const saveTextBtn = document.getElementById('update-text');
+
+			document.getElementById('dithering').value = 'bwr_Atkinson';
+			image_mode.value = 'paint';
+			paint_color.value = 'black';
+			font.value = '黑体';
+
+			// 切换文字/画笔模式：显示/隐藏文本输入框
+			image_mode.onchange = function () {
+				if (image_mode.value === 'font') {
+					font.style.display = 'inline-block';
+					saveTextBtn.style.display = 'inline-block';
+					textWrap.style.display = 'flex';
+				} else {
+					font.style.display = 'none';
+					saveTextBtn.style.display = 'none';
+					textWrap.style.display = 'none';
+				}
+			}
+
+			// 字号、颜色、字体同步更新预览
+			paint_size.onchange = () => {}
+			paint_color.onchange = () => {}
+			font.onchange = () => {}
+
+			// 保存文字按钮：固定左上角X=10,Y=10分行绘制
+			saveTextBtn.onclick = function () {
+				const textContent = textArea.value.trim();
+				if (!textContent) {
+					alert('请在文本框输入文字');
+					return;
+				}
+				const fontSize = Number(paint_size.value) * 10;
+				const lineHeight = fontSize * 1.2;
+				ctx.font = `bold ${fontSize}px ${font.value}`;
+				ctx.fillStyle = paint_color.value;
+				const lines = textContent.split('\n');
+				let drawY = 10;
+				const startX = 10;
+				for(let line of lines) {
+					ctx.fillText(line, startX, drawY);
+					drawY += lineHeight;
+				}
+				// ★ 文字绘制后立刻硬性二值化，避免抗锯齿导致水墨屏笔画粗细不一
+				binarizeCanvas(canvas);
+				addLog(`已绘制多行文字并二值化，字号${fontSize}`);
+			}
+
+			// 画笔绘制逻辑完全保留不变
+			canvas.onmousedown = function(e) {
+				let { x, y } = get_position(canvas, e.clientX, e.clientY);
+				if (image_mode.value === 'paint') {
+					is_allow_drawing = true;
+					ctx.beginPath();
+					ctx.moveTo(x, y);
+				}
+			};
+			canvas.onmousemove = (e) => {
+				let { x, y } = get_position(canvas, e.clientX, e.clientY);
+				if (image_mode.value === 'paint' && is_allow_drawing) {
+					ctx.lineWidth = paint_size.value;
+					ctx.strokeStyle = paint_color.value;
+					ctx.lineTo(x, y);
+					ctx.stroke();
+				}
+			}
+			canvas.onmouseup = function() {
+				if (image_mode.value === 'paint') { is_allow_drawing = false; }
+			}
+			canvas.onmouseleave = function () {
+				if (image_mode.value === 'paint') is_allow_drawing = false;
+			}
+		}
+	</script>
+</body>
+</html>

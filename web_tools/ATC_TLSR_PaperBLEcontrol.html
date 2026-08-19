@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC_TLSR_Paper BLE 配置控制台</title>
+<style>
+  /* ========== CSS Variables — 灰白色系商务极简 ========== */
+  :root {
+    --bg-body:        #f5f6f8;
+    --bg-card:        #ffffff;
+    --bg-subtle:      #f0f1f4;
+    --bg-hover:       #e8eaf0;
+    --bg-active:      #d8dbe3;
+
+    --text-primary:   #1a1d23;
+    --text-secondary: #5a6072;
+    --text-muted:     #8c93a3;
+    --text-on-dark:   #ffffff;
+
+    --accent:         #3b6cb5;
+    --accent-hover:   #2e5796;
+    --accent-light:   #e8eef7;
+    --accent-border:  #b3c6e3;
+
+    --success:        #2a9d6e;
+    --success-bg:     #e6f5ef;
+    --warning:        #c98a00;
+    --warning-bg:     #fef6e7;
+    --danger:         #c0392b;
+    --danger-hover:   #a52f22;
+    --danger-bg:      #fdecea;
+
+    --border:         #e2e5ec;
+    --border-light:   #eef0f4;
+    --border-focus:   #3b6cb5;
+
+    --radius:         6px;
+    --radius-lg:      10px;
+    --shadow-sm:      0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:      0 2px 8px rgba(0,0,0,.06);
+    --shadow-lg:      0 4px 16px rgba(0,0,0,.08);
+
+    --font-sans:      -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                      "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --font-mono:      "SF Mono", "Fira Code", "Consolas", "Menlo", "Courier New", monospace;
+
+    --transition:     all .2s ease;
+  }
+
+  /* ========== Reset & Base ========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-size: 14px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ========== Layout ========== */
+  .app-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* ========== Header ========== */
+  .app-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -.3px;
+    margin-bottom: 6px;
+  }
+  .app-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .app-header a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: var(--transition);
+  }
+  .app-header a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+  /* ========== Card ========== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  .card:hover { box-shadow: var(--shadow-md); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .card-header .icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .card-header .icon-blue   { background: var(--accent-light); color: var(--accent); }
+  .card-header .icon-green  { background: var(--success-bg);  color: var(--success); }
+  .card-header .icon-orange { background: var(--warning-bg);  color: var(--warning); }
+  .card-header .icon-red    { background: var(--danger-bg);  color: var(--danger); }
+  .card-header .icon-gray   { background: #eef0f4;           color: var(--text-secondary); }
+  .card-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .card-body { padding: 20px; }
+
+  /* ========== Button ========== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: var(--transition);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg-hover); border-color: #c8cdd8; }
+  .btn:active { background: var(--bg-active); }
+  .btn:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(59,108,181,.15); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-dark);
+  }
+  .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  .btn-success {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--text-on-dark);
+  }
+  .btn-success:hover { background: #248a60; border-color: #248a60; }
+
+  .btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-on-dark);
+  }
+  .btn-danger:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
+
+  .btn-outline {
+    background: transparent;
+  }
+
+  .btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* ========== Form Controls ========== */
+  .form-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .form-row:last-child { margin-bottom: 0; }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 72px;
+    flex-shrink: 0;
+  }
+
+  .form-control {
+    flex: 1;
+    min-width: 140px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    outline: none;
+  }
+  .form-control:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(59,108,181,.12);
+  }
+  .form-control::placeholder { color: var(--text-muted); }
+
+  select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238c93a3' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+
+  input[type="file"].form-control {
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  input[type="file"].form-control::file-selector-button {
+    padding: 4px 12px;
+    margin-right: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  input[type="file"].form-control::file-selector-button:hover {
+    background: #d4e0f3;
+  }
+
+  /* ========== Status Bar ========== */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    min-height: 42px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .status-dot.active { background: var(--success); box-shadow: 0 0 0 3px rgba(42,157,110,.15); }
+  .status-dot.busy   { background: var(--warning); box-shadow: 0 0 0 3px rgba(201,138,0,.15); }
+  .status-dot.error  { background: var(--danger);  box-shadow: 0 0 0 3px rgba(192,57,43,.15); }
+
+  /* ========== Textarea ========== */
+  textarea.form-control {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 12px;
+    background: #fafbfc;
+  }
+
+  /* ========== Log Box ========== */
+  .log-box {
+    background: #1a1d23;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    max-height: 260px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: #c8cdd8;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .log-box::-webkit-scrollbar { width: 6px; }
+  .log-box::-webkit-scrollbar-track { background: transparent; }
+  .log-box::-webkit-scrollbar-thumb { background: #3a3f4b; border-radius: 3px; }
+
+  /* ========== Divider ========== */
+  .divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 16px 0;
+  }
+
+  /* ========== Toolbar (top buttons) ========== */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* ========== Section description text ========== */
+  .section-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  /* ========== Responsive ========== */
+  @media (max-width: 640px) {
+    .app-container { padding: 20px 14px 40px; }
+    .form-row { flex-direction: column; align-items: stretch; }
+    .form-label { min-width: auto; }
+    .toolbar .btn { flex: 1; }
+  }
+
+  /* ========== Progress hint ========== */
+  .progress-info {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-family: var(--font-mono);
+  }
+
+  /* ========== Badge ========== */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-danger  { background: var(--danger-bg);  color: var(--danger); }
+</style>
+</head>
+
+<body>
+<div class="app-container">
+
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <h1>ATC_TLSR_Paper BLE 配置控制台</h1>
+    <p>通过蓝牙低功耗（BLE）连接并管理您的 Telink TLSR 墨水屏设备 ·
+      <a href="https://github.com/atc1441/ATC_TLSR_Paper" target="_blank" rel="noopener">项目地址 ↗</a>
+    </p>
+  </header>
+
+  <!-- ===== Toolbar ===== -->
+  <div class="toolbar">
+    <button class="btn btn-primary" id="connectbutton" onclick="preConnect();">
+      <span>🔗</span> 连接设备
+    </button>
+    <button class="btn" onclick="reConnect();">
+      <span>🔄</span> 重新连接
+    </button>
+    <button class="btn btn-outline" onclick="document.getElementById('log').innerHTML='';">
+      <span>🗑️</span> 清除日志
+    </button>
+  </div>
+
+  <!-- ===== Connection Status ===== -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">就绪 · 等待连接设备</span>
+  </div>
+
+  <!-- ===== OTA Firmware Update ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">📦</div>
+      <h2>固件 OTA 更新</h2>
+      <span class="badge">核心功能</span>
+    </div>
+    <div class="card-body">
+      <p class="section-desc">
+        选择 .bin 格式固件文件，连接设备后点击「启动 OTA 更新」开始升级。<br>
+        数据传输完成后设备将自动校验并重启加载新固件。
+      </p>
+
+      <div class="form-row">
+        <label class="form-label" for="file">固件文件</label>
+        <input type="file" accept=".bin" id="file" class="form-control" onclick="resetFileSelector();">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">固件数据</label>
+        <textarea id="cmdIMAGE" class="form-control" rows="6" placeholder="选择 .bin 文件后此处将显示十六进制固件数据..."></textarea>
+      </div>
+
+      <div class="form-row" style="margin-top:18px;">
+        <button class="btn btn-success" onclick="sendFile(0x20000, document.getElementById('cmdIMAGE').value);">
+          <span>⚡</span> 启动 OTA 更新
+        </button>
+      </div>
+
+      <div id="otaStatus" class="progress-info" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ===== Time & Device Settings ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-green">⚙️</div>
+      <h2>时间与设备设置</h2>
+    </div>
+    <div class="card-body">
+
+      <!-- Time Setting -->
+      <div class="form-row">
+        <label class="form-label" for="hourOffset">时区偏移</label>
+        <input type="number" id="hourOffset" class="form-control" min="-12" max="12" value="8" style="max-width:120px;">
+        <span class="badge" style="margin-left:4px;">小时</span>
+        <button class="btn btn-primary btn-sm" onclick="setTime(document.getElementById('hourOffset').value);">
+          🕐 同步时间
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Device Type -->
+      <div class="form-row">
+        <label class="form-label" for="forceEPDselection">屏幕型号</label>
+        <select id="forceEPDselection" class="form-control" style="max-width:200px;">
+          <option value="0">BW213</option>
+          <option value="1">BWR213</option>
+          <option value="2">BWR154</option>
+          <option value="3">213ICE</option>
+          <option value="4">BWR350</option>
+          <option value="5">BWY350</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="sendForceEpd(document.getElementById('forceEPDselection').selectedIndex);">
+          📟 设定设备类型
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Advanced / Debug ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-orange">🔧</div>
+      <h2>高级调试</h2>
+      <span class="badge badge-warning">开发者</span>
+    </div>
+    <div class="card-body">
+
+      <!-- Flash Read -->
+      <div class="form-row">
+        <label class="form-label" for="positionText">闪存地址</label>
+        <input type="text" id="positionText" class="form-control" value="20000" style="max-width:160px; font-family:var(--font-mono);">
+        <button class="btn btn-sm" onclick="readFlash(Number('0x'+document.getElementById('positionText').value));">
+          💾 读取闪存
+        </button>
+      </div>
+
+      <!-- RAM Read -->
+      <div class="form-row">
+        <label class="form-label" for="positionTextRam">内存地址</label>
+        <input type="text" id="positionTextRam" class="form-control" value="0" style="max-width:160px; font-family:var(--font-mono);">
+        <button class="btn btn-sm" onclick="readRam(Number('0x'+document.getElementById('positionTextRam').value));">
+          🧠 读取内存
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Raw Command -->
+      <div class="form-row">
+        <label class="form-label" for="cmdTXT">HEX 命令</label>
+        <input type="text" id="cmdTXT" class="form-control" value="0060" style="max-width:200px; font-family:var(--font-mono);">
+        <button class="btn btn-sm" onclick="sendcmd(document.getElementById('cmdTXT').value);">
+          ➤ 发送命令
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Test Firmware -->
+      <div class="form-row">
+        <button class="btn btn-danger btn-sm" onclick="writeFW(0x20000,'1212123234321234');">
+          ⚠️ 临时启动测试固件
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="doFinalFlash();">
+          ⚠️ 烧录测试固件
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Log Console ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-gray">📋</div>
+      <h2>运行日志</h2>
+    </div>
+    <div class="card-body">
+      <div id="log" class="log-box"></div>
+    </div>
+  </div>
+
+</div><!-- /app-container -->
+
+<script>
+/* =====================================================================
+   ATC_TLSR_Paper BLE OTA — 逻辑层（与原始版本保持一致，仅 UI 交互增强）
+   ===================================================================== */
+
+let bleDevice;
+let gattServer;
+let Theservice;
+let ServiceMain;
+let settingsCharacteristics;
+let writeCharacteristic;
+let busy = false;
+let imgArray;
+let imgArrayLen = 0;
+let uploadPart = 0;
+let startTime = 0;
+let reconnectTrys = 0;
+
+/* ---- helpers ---- */
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function resetVariables() {
+  busy = false;
+  gattServer = null;
+  Theservice = null;
+  writeCharacteristic = null;
+  updateStatus('disconnected');
+}
+
+function decimalToHex(d, padding) {
+  var hex = Number(d).toString(16);
+  padding = (typeof padding === 'undefined' || padding === null) ? 2 : padding;
+  while (hex.length < padding) hex = '0' + hex;
+  return hex;
+}
+
+/* ---- status UI ---- */
+function updateStatus(state, text) {
+  var dot  = document.getElementById('statusDot');
+  var lbl  = document.getElementById('statusText');
+  dot.className = 'status-dot';
+  switch (state) {
+    case 'connected':
+      dot.classList.add('active'); lbl.textContent = text || '已连接 · 设备就绪'; break;
+    case 'connecting':
+      dot.classList.add('busy');   lbl.textContent = text || '连接中...'; break;
+    case 'busy':
+      dot.classList.add('busy');   lbl.textContent = text || '数据传输中...'; break;
+    case 'error':
+      dot.classList.add('error');  lbl.textContent = text || '连接错误'; break;
+    default:
+      lbl.textContent = text || '就绪 · 等待连接设备';
+  }
+}
+
+function setStatus(txt) {
+  var ota = document.getElementById('otaStatus');
+  ota.style.display = 'block';
+  ota.textContent = txt;
+  if (txt && txt.indexOf('Current') === 0) updateStatus('busy', 'OTA 升级中...');
+}
+
+/* ---- logging ---- */
+function addLog(logTXT) {
+  var t = new Date();
+  var time = ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+':'+('0'+t.getSeconds()).slice(-2)+' | ';
+  var box = document.getElementById('log');
+  box.innerHTML += time + logTXT + '\n';
+  box.scrollTop = box.scrollHeight;
+  console.log(time + logTXT);
+  // keep last 200 lines
+  var lines = box.innerHTML.split('\n');
+  if (lines.length > 200) box.innerHTML = lines.slice(lines.length - 200).join('\n');
+}
+
+/* ---- error ---- */
+function handleError(error) {
+  console.log(error);
+  addLog('Error: ' + (error && error.message ? error.message : error));
+  resetVariables();
+  if (bleDevice == null) return;
+  if (reconnectTrys <= 5) {
+    reconnectTrys++;
+    addLog('尝试重连 (' + reconnectTrys + '/5)...');
+    updateStatus('connecting', '重连中...');
+    connect();
+  } else {
+    addLog('无法连接，已放弃');
+    updateStatus('error', '连接失败');
+    reconnectTrys = 0;
+  }
+}
+
+/* ---- BLE commands ---- */
+async function sendCommand(cmd) {
+  if (writeCharacteristic) await writeCharacteristic.writeValue(cmd);
+}
+async function rxTxSendCommand(cmd) {
+  if (settingsCharacteristics) await settingsCharacteristics.writeValue(cmd);
+}
+
+function readFlash(addr) {
+  var ha = decimalToHex(addr, 8);
+  addLog('读取闪存地址: 0x' + ha);
+  sendCommand(hexToBytes('04' + ha));
+}
+
+function readRam(addr) {
+  var ha = decimalToHex(addr, 8);
+  addLog('读取内存地址: 0x' + ha);
+  sendCommand(hexToBytes('05' + ha)).catch(handleError);
+}
+
+function writeFW(addr, data) { addLog('临时启动测试固件（未实现）'); }
+
+var fwSizeComplete = 0, fwBytesTransmited = 0;
+
+async function sendPart(address, data) {
+  var ha = decimalToHex(address, 8);
+  var part_len = 480;
+  while (data.length) {
+    var cur = data.length < part_len ? data.length : part_len;
+    var chunk = data.substring(0, cur);
+    data = data.substring(cur);
+    await sendCommand(hexToBytes('03' + chunk));
+    fwBytesTransmited += cur;
+    setStatus('已发送: ' + (fwBytesTransmited/2) + ' / ' + (fwSizeComplete/2) + ' 字节 · 用时: ' + ((Date.now()-startTime)/1000).toFixed(1) + 's');
+  }
+  await sendCommand(hexToBytes('02' + ha));
+  await delay(50);
+}
+
+async function eraseFwArea() {
+  addLog('开始擦除固件区域...');
+  var size = 0x20000, addr = 0x20000, c = 0;
+  while (addr < 0x20000 + size) {
+    await sendCommand(hexToBytes('01' + decimalToHex(addr, 8)));
+    addr += 0x1000; c++;
+  }
+  addLog('擦除完成 · 共 ' + c + ' 个扇区');
+}
+
+async function doCRCcheck() { await sendCommand(hexToBytes('06')); }
+
+async function doFinalFlash(crc) {
+  var cmd = '07C001CEED' + (crc || '');
+  addLog('发送最终烧录指令: ' + cmd);
+  await sendCommand(hexToBytes(cmd));
+  addLog('✅ 烧录完成！设备将自动重启');
+  updateStatus('connected', '升级完成 · 等待设备重启');
+}
+
+function calculateCRC(data) {
+  var pos = 0, crc = 0;
+  while (pos < 0x40000) {
+    crc += pos < data.length ? Number('0x' + data.substring(pos, pos+2)) : 0xff;
+    pos += 2;
+  }
+  return decimalToHex(crc & 0xffff, 4);
+}
+
+async function sendFile(address, data) {
+  if (!data) { addLog('❌ 请先选择固件文件'); return; }
+  if (writeCharacteristic == null) { addLog('❌ 请先连接设备'); return; }
+  startTime = Date.now();
+  var inCRC = calculateCRC(data);
+  addLog('固件 CRC = 0x' + inCRC);
+  fwSizeComplete = data.length;
+  fwBytesTransmited = 0;
+  document.getElementById('otaStatus').style.display = 'block';
+  updateStatus('busy', '开始 OTA 升级...');
+  await eraseFwArea();
+  var part_len = 0x200, offset = 0;
+  while (data.length) {
+    var cur = data.length < part_len ? data.length : part_len;
+    await sendPart(address + offset, data.substring(0, cur));
+    data = data.substring(cur);
+    offset += cur / 2;
+  }
+  await doFinalFlash(inCRC);
+}
+
+/* ---- image / raw send (legacy) ---- */
+function sendcmd(txt) {
+  addLog('发送命令: ' + txt);
+  sendCommand(hexToBytes(txt)).catch(handleError);
+}
+
+function sendimg(cmdIMG) {
+  imgArray = cmdIMG.replace(/(?:\r\n|\r|\n|,|0x| )/g, '');
+  imgArrayLen = imgArray.length;
+  uploadPart = 0;
+  sendCommand(hexToBytes('0000')).then(function(){
+    sendCommand(hexToBytes('020000')).then(sendIMGpart);
+  }).catch(handleError);
+}
+function sendIMGpart() {
+  if (imgArray.length > 0) {
+    sendCommand(hexToBytes('03' + imgArray.substring(0, 38))).then(function(){
+      imgArray = imgArray.substring(38);
+      setStatus('分包: ' + (++uploadPart));
+      sendIMGpart();
+    });
+  } else {
+    sendCommand(hexToBytes('01')).then(function(){ addLog('镜像发送完成'); });
+  }
+}
+
+/* ---- connection lifecycle ---- */
+function disconnect() {
+  resetVariables();
+  addLog('🔌 已断开连接');
+  document.getElementById('connectbutton').textContent = '🔗 连接设备';
+}
+
+function handleNotify(data) {
+  addLog('← 收到: ' + bytesToHex(data.buffer));
+}
+
+function preConnect() {
+  if (gattServer && gattServer.connected) {
+    if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+  } else {
+    reconnectTrys = 0;
+    updateStatus('connecting', '扫描设备中...');
+    navigator.bluetooth.requestDevice({
+      optionalServices: [
+        '0000221f-0000-1000-8000-00805f9b34fb',
+        '00001f10-0000-1000-8000-00805f9b34fb',
+        '13187b10-eba9-a3ba-044e-83d3217d9a38'
+      ],
+      acceptAllDevices: true
+    }).then(function(device) {
+      device.addEventListener('gattserverdisconnected', disconnect);
+      bleDevice = device;
+      addLog('选中设备: ' + device.name);
+      connect();
+    }).catch(function(err) {
+      updateStatus('error', '用户取消或蓝牙不可用');
+      addLog('连接取消: ' + err);
+    });
+  }
+}
+
+function reConnect() {
+  reconnectTrys = 0;
+  if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+  resetVariables();
+  addLog('↻ 重新连接中...');
+  setTimeout(connect, 300);
+}
+
+function connect() {
+  if (writeCharacteristic) return;
+  updateStatus('connecting', '连接 GATT 服务...');
+  addLog('正在连接: ' + bleDevice.name);
+  bleDevice.gatt.connect().then(function(server) {
+    gattServer = server;
+    return gattServer.getPrimaryService('0000221f-0000-1000-8000-00805f9b34fb');
+  }).then(function(service) {
+    Theservice = service;
+    return Theservice.getCharacteristic('0000331f-0000-1000-8000-00805f9b34fb');
+  }).then(function(characteristic) {
+    writeCharacteristic = characteristic;
+    document.getElementById('connectbutton').textContent = '🔌 断开连接';
+    updateStatus('connected', '已连接 · ' + bleDevice.name);
+    addLog('✅ 设备已连接: ' + bleDevice.name);
+    return writeCharacteristic.startNotifications();
+  }).then(function() {
+    writeCharacteristic.addEventListener('characteristicvaluechanged', function(e) {
+      handleNotify(e.target.value);
+    });
+    connect_to_rxtx();
+  }).catch(handleError);
+}
+
+function connect_to_rxtx() {
+  gattServer.getPrimaryServices().then(function(services) {
+    for (var i = 0; i < services.length; i++) {
+      if (services[i].uuid === '00001f10-0000-1000-8000-00805f9b34fb') {
+        return gattServer.getPrimaryService('00001f10-0000-1000-8000-00805f9b34fb')
+          .then(function(svc) {
+            ServiceMain = svc;
+            return ServiceMain.getCharacteristic('00001f1f-0000-1000-8000-00805f9b34fb');
+          }).then(function(ch) {
+            settingsCharacteristics = ch;
+            addLog('✅ 扩展服务已就绪');
+          }).catch(function(){});
+      }
+    }
+  }).catch(function(){});
+}
+
+/* ---- time / device config ---- */
+function setTime(offset) {
+  var unix = Math.round(Date.now()/1000) + 3600 * Number(offset);
+  var d = new Date(unix*1000).toLocaleTimeString('de-DE');
+  addLog('设置时间: ' + d + ' (UTC' + (offset>=0?'+':'') + offset + ')');
+  rxTxSendCommand(hexToBytes('dd' + intToHex4(unix)));
+}
+
+function sendForceEpd(nr) {
+  addLog('设定屏幕型号: ' + document.getElementById('forceEPDselection').options[nr].text);
+  rxTxSendCommand(hexToBytes('e0' + byteToHex(nr+1)));
+}
+
+/* ---- hex/bytes utils ---- */
+function hexToBytes(hex) {
+  var bytes = [];
+  for (var c = 0; c < hex.length; c += 2) bytes.push(parseInt(hex.substr(c,2),16));
+  return new Uint8Array(bytes);
+}
+function bytesToHex(data) {
+  return new Uint8Array(data).reduce(function(m,i){ return m+('0'+i.toString(16)).slice(-2); }, '');
+}
+function byteToHex(n)  { return ('0'+n.toString(16)).substr(-2); }
+function intToHex(n)   { var s=('0000'+n.toString(16)).substr(-4); return s.substring(2,4)+s.substring(0,2); }
+function intToHex4(n)  { return ('00000000'+n.toString(16)).substr(-8); }
+
+/* ---- file loader ---- */
+window.onload = function() {
+  document.getElementById('file').addEventListener('change', function() {
+    var reader = new FileReader();
+    reader.onload = function() {
+      var arr = bytesToHex(this.result);
+      if (arr.substring(16,24) !== '4b4e4c54') {
+        alert('所选文件不是有效的 Telink 固件 (.bin)');
+        addLog('❌ 文件格式校验失败');
+        return;
+      }
+      addLog('✅ 固件已加载，大小: ' + (arr.length/2) + ' 字节');
+      document.getElementById('cmdIMAGE').value = arr;
+      updateStatus('connected', '固件已就绪 · 可启动 OTA');
+    };
+    if (this.files[0]) reader.readAsArrayBuffer(this.files[0]);
+    else addLog('未选择文件');
+  }, false);
+};
+
+function resetFileSelector() {
+  document.getElementById('file').value = '';
+}
+</script>
+
+</body>
+</html>

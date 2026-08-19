@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLSR8359 墨水屏 UART 烧录工具（仅支持TX-SWS烧录）</title>
+<style>
+  /* ========== CSS Variables — 灰白色系商务极简 ========== */
+  :root {
+    --bg-body:        #f5f6f8;
+    --bg-card:        #ffffff;
+    --bg-subtle:      #f0f1f4;
+    --bg-hover:       #e8eaf0;
+    --bg-active:      #d8dbe3;
+
+    --text-primary:   #1a1d23;
+    --text-secondary: #5a6072;
+    --text-muted:     #8c93a3;
+    --text-on-dark:   #ffffff;
+
+    --accent:         #3b6cb5;
+    --accent-hover:   #2e5796;
+    --accent-light:   #e8eef7;
+    --accent-border:  #b3c6e3;
+
+    --success:        #2a9d6e;
+    --success-bg:     #e6f5ef;
+    --warning:        #c98a00;
+    --warning-bg:     #fef6e7;
+    --danger:         #c0392b;
+    --danger-hover:   #a52f22;
+    --danger-bg:     #fdecea;
+
+    --border:         #e2e5ec;
+    --border-light:   #eef0f4;
+    --border-focus:   #3b6cb5;
+
+    --radius:         6px;
+    --radius-lg:      10px;
+    --shadow-sm:      0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:      0 2px 8px rgba(0,0,0,.06);
+    --shadow-lg:      0 4px 16px rgba(0,0,0,.08);
+
+    --font-sans:      -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                      "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --font-mono:      "SF Mono", "Fira Code", "Consolas", "Menlo", "Courier New", monospace;
+
+    --transition:     all .2s ease;
+  }
+
+  /* ========== Reset & Base ========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-size: 14px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ========== Layout ========== */
+  .app-container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* ========== Header ========== */
+  .app-header {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -.3px;
+    margin-bottom: 6px;
+  }
+  .app-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .app-header a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: var(--transition);
+  }
+  .app-header a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+  /* ========== Card ========== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  .card:hover { box-shadow: var(--shadow-md); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-light);
+  }
+  .card-header .icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .card-header .icon-blue   { background: var(--accent-light); color: var(--accent); }
+  .card-header .icon-green  { background: var(--success-bg);  color: var(--success); }
+  .card-header .icon-orange { background: var(--warning-bg);  color: var(--warning); }
+  .card-header .icon-red    { background: var(--danger-bg);   color: var(--danger); }
+  .card-header .icon-gray   { background: #eef0f4;           color: var(--text-secondary); }
+  .card-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .card-body { padding: 20px; }
+
+  /* ========== Button ========== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: var(--transition);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg-hover); border-color: #c8cdd8; }
+  .btn:active:not(:disabled) { background: var(--bg-active); }
+  .btn:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(59,108,181,.15); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-dark);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  .btn-success {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--text-on-dark);
+  }
+  .btn-success:hover:not(:disabled) { background: #248a60; border-color: #248a60; }
+
+  .btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-on-dark);
+  }
+  .btn-danger:hover:not(:disabled) { background: var(--danger-hover); border-color: var(--danger-hover); }
+
+  .btn-outline { background: transparent; }
+
+  .btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* ========== Form Controls ========== */
+  .form-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .form-row:last-child { margin-bottom: 0; }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  .form-control {
+    flex: 1;
+    min-width: 140px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    outline: none;
+  }
+  .form-control:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(59,108,181,.12);
+  }
+  .form-control:disabled { background: var(--bg-subtle); cursor: not-allowed; }
+
+  select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238c93a3' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    flex: 0 1 auto;
+    min-width: 120px;
+  }
+
+  input[type="file"].form-control {
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  input[type="file"].form-control::file-selector-button {
+    padding: 4px 12px;
+    margin-right: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  input[type="file"].form-control::file-selector-button:hover {
+    background: #d4e0f3;
+  }
+
+  /* ========== Status Bar ========== */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    min-height: 42px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .status-dot.active { background: var(--success); box-shadow: 0 0 0 3px rgba(42,157,110,.15); }
+  .status-dot.busy   { background: var(--warning); box-shadow: 0 0 0 3px rgba(201,138,0,.15); }
+  .status-dot.error  { background: var(--danger);  box-shadow: 0 0 0 3px rgba(192,57,43,.15); }
+
+  /* ========== Progress Bar ========== */
+  .progress-wrap {
+    margin: 12px 0 4px;
+  }
+  .progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-subtle);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), #6a9bd9);
+    border-radius: 3px;
+    transition: width .3s ease;
+  }
+  .progress-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* ========== Log Box ========== */
+  .log-box {
+    background: #1a1d23;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    max-height: 320px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: #c8cdd8;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .log-box::-webkit-scrollbar { width: 6px; }
+  .log-box::-webkit-scrollbar-track { background: transparent; }
+  .log-box::-webkit-scrollbar-thumb { background: #3a3f4b; border-radius: 3px; }
+
+  /* ========== Divider ========== */
+  .divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 16px 0;
+  }
+
+  /* ========== Toolbar ========== */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  /* ========== Section description ========== */
+  .section-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  /* ========== Badge ========== */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-warning { background: var(--warning-bg); color: var(--warning); }
+  .badge-danger  { background: var(--danger-bg);  color: var(--danger); }
+  .badge-info    { background: #eef0f4; color: var(--text-secondary); }
+
+  /* ========== Hint text ========== */
+  .hint-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ========== Responsive ========== */
+  @media (max-width: 640px) {
+    .app-container { padding: 20px 14px 40px; }
+    .form-row { flex-direction: column; align-items: stretch; }
+    .form-label { min-width: auto; }
+    .toolbar .btn { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="app-container">
+
+  <!-- ===== Header ===== -->
+  <header class="app-header">
+    <h1>TLSR8359 墨水屏 UART 烧录工具</h1>
+    <p>通过 USB 串口连接并烧录 Hanshow TLSR8359 电子价签设备 ·
+      <a href="https://github.com/atc1441/ATC_TLSR_Paper" target="_blank" rel="noopener">固件仓库 ↗</a> ·
+      <a href="https://github.com/atc1441/ATC_TLSR_Paper/blob/main/USB_UART_Flashing_connection.jpg" target="_blank" rel="noopener">接线图 ↗</a>
+    </p>
+  </header>
+
+  <!-- ===== Connection Settings ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">🔌</div>
+      <h2>串口连接设置</h2>
+      <span class="badge">步骤 1</span>
+    </div>
+    <div class="card-body">
+
+      <div class="form-row">
+        <label class="form-label" for="ubaud">波特率</label>
+        <select id="ubaud" class="form-control" title="推荐: 460800">
+          <option value="115200">115200</option>
+          <option value="230400">230400</option>
+          <option value="460800" selected>460800</option>
+          <option value="921600">921600</option>
+          <option value="1500000">1500000</option>
+          <option value="2000000">2000000</option>
+        </select>
+        <span class="hint-text">推荐 460800</span>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="uatime">激活延时</label>
+        <select id="uatime" class="form-control" title="激活时间：需大于广播间隔，或使用手动断电复位">
+          <option value="0">0 ms</option>
+          <option value="100">100 ms</option>
+          <option value="1000">1 秒</option>
+          <option value="2000">2 秒</option>
+          <option value="3000" selected>3 秒</option>
+          <option value="4000">4 秒</option>
+          <option value="8000">8 秒</option>
+          <option value="16000">16 秒</option>
+        </select>
+        <span class="hint-text">需大于广播间隔</span>
+      </div>
+
+      <div class="form-row" style="margin-top:18px;">
+        <button class="btn btn-primary" id="butOpen">🔗 打开串口</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Status Bar ===== -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">就绪 · 请打开串口并选择固件文件</span>
+  </div>
+
+  <!-- ===== Progress ===== -->
+  <div class="progress-wrap" id="progressWrap" style="display:none;">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text" id="progressText">0%</div>
+  </div>
+
+  <!-- ===== Firmware & Actions ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-green">⚡</div>
+      <h2>固件烧录操作</h2>
+      <span class="badge badge-success">核心功能</span>
+    </div>
+    <div class="card-body">
+
+      <p class="section-desc">
+        选择 .bin 格式固件文件，连接串口后点击「写入闪存」开始烧录。<br>
+        操作顺序：打开串口 → 选择固件 → 写入闪存。
+      </p>
+
+      <div class="form-row">
+        <label class="form-label" for="file">固件文件</label>
+        <input type="file" accept=".bin" id="file" class="form-control">
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Main Actions -->
+      <div class="form-row">
+        <button class="btn btn-success" id="butWrite" disabled>
+          ⚡ 写入闪存
+        </button>
+        <span id="swrite" class="hint-text">请先打开串口并选择固件文件</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Advanced Actions -->
+      <div class="form-row">
+        <button class="btn btn-outline btn-sm" id="butUnlock" disabled>
+          🔓 解锁闪存
+        </button>
+        <button class="btn btn-outline btn-sm" id="butErase" disabled>
+          🗑️ 擦除全部闪存
+        </button>
+        <button class="btn btn-outline btn-sm" id="butReset" disabled title="软复位 MCU">
+          ↻ 软复位 MCU
+        </button>
+        <button class="btn btn-outline btn-sm" id="butClrlog">
+          🧹 清除日志
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Log Console ===== -->
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-gray">📋</div>
+      <h2>运行日志</h2>
+    </div>
+    <div class="card-body">
+      <div id="slog" class="log-box"></div>
+    </div>
+  </div>
+
+</div><!-- /app-container -->
+
+<script type="text/javascript">
+"use strict";
+//==============================================================
+//  TLSR8359 USB-COM Flash Writer — 汉化 + UI 优化版
+//  Original: pvvx (2021), ATC1441 (2021)
+//==============================================================
+
+var firmwareArray = null;
+
+var $ = function(id) { return document.getElementById(id); };
+
+const connect     = $('butOpen');
+const fwriter     = $('butWrite');
+const swrite      = $('swrite');
+const bunlock     = $('butUnlock');
+const berase      = $('butErase');
+const breset      = $('butReset');
+const ubaud       = $('ubaud');
+const uatime      = $('uatime');
+const ufile       = $('file');
+
+const statusDot   = $('statusDot');
+const statusText  = $('statusText');
+const progWrap    = $('progressWrap');
+const progFill    = $('progressFill');
+const progText    = $('progressText');
+
+/* ---- status UI ---- */
+function updateStatus(state, text) {
+  statusDot.className = 'status-dot';
+  switch (state) {
+    case 'connected':
+      statusDot.classList.add('active');
+      statusText.textContent = text || '串口已连接';
+      break;
+    case 'busy':
+      statusDot.classList.add('busy');
+      statusText.textContent = text || '烧录中...';
+      break;
+    case 'error':
+      statusDot.classList.add('error');
+      statusText.textContent = text || '发生错误';
+      break;
+    default:
+      statusText.textContent = text || '就绪';
+  }
+}
+
+function setProgress(pct, label) {
+  progWrap.style.display = 'block';
+  progFill.style.width = pct + '%';
+  progText.textContent = label || (pct.toFixed(0) + '%');
+}
+
+function hideProgress() {
+  progWrap.style.display = 'none';
+  progFill.style.width = '0%';
+}
+
+/* ---- logging ---- */
+function log(data) {
+  console.log(data);
+  var box = $("slog");
+  box.innerHTML += new Date().toLocaleTimeString() + " | " + data + "\n";
+  box.scrollTop = box.scrollHeight;
+  // keep last 300 lines
+  var lines = box.innerHTML.split('\n');
+  if (lines.length > 300) box.innerHTML = lines.slice(lines.length - 300).join('\n');
+}
+
+$('butClrlog').onclick = function() { $("slog").innerHTML = ''; hideProgress(); };
+
+/* ---- helpers ---- */
+function delay(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+
+function hex(number, length) {
+  var str = (number.toString(16)).toUpperCase();
+  while (str.length < length) str = '0' + str;
+  return str;
+}
+
+/* ---- SWS (Single Wire Serial) encoding ---- */
+function sws_wr_addr(addr, data) {
+  let d = new Uint8Array(10);
+  let h = new Uint8Array([0x5a, (addr>>16)&0xff, (addr>>8)&0xff, addr&0xff, 0x00]);
+  let pkt = new Uint8Array((data.byteLength+6)*10);
+  d[0] = 0x80;
+  d[9] = 0xfe;
+  h.forEach((el,n) => {
+    let m = 0x80, idx = 1;
+    do {
+      d[idx] = (el & m) ? 0x80 : 0xfe;
+      idx++; m >>= 1;
+    } while(m !== 0);
+    pkt.set(d, n*10);
+    d[0] = 0xfe;
+  });
+  data.forEach((el,n) => {
+    let m = 0x80, idx = 1;
+    do {
+      d[idx] = (el & m) ? 0x80 : 0xfe;
+      idx++; m >>= 1;
+    } while(m !== 0);
+    pkt.set(d, (n+5)*10);
+  });
+  d.fill(0x80, 0, 9);
+  pkt.set(d, (data.byteLength+5)*10);
+  return pkt;
+}
+
+/* ---- Flash commands via SWS ---- */
+async function FlashByteCmd(cmd) {
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x00])));
+  return await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([cmd & 0xff, 0x01])));
+}
+
+async function FlashWriteEnable() { return FlashByteCmd(0x06); }
+async function FlashWakeUp()      { return FlashByteCmd(0xab); }
+
+async function FlashUnlock() {
+  await FlashWriteEnable();
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x00])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x01])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x00, 0x01])));
+  await FlashWriteEnable();
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x00])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x01])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x00])));
+  return await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x00, 0x01])));
+}
+
+async function FlashEraseAll() { return FlashByteCmd(0x60); }
+
+async function WriteFifo(addr, data) {
+  await serialController.write_raw(sws_wr_addr(0x00b3, new Uint8Array([0x80])));
+  await serialController.write_raw(sws_wr_addr(addr, data));
+  return await serialController.write_raw(sws_wr_addr(0x00b3, new Uint8Array([0x00])));
+}
+
+async function SectorErase(addr) {
+  await FlashWriteEnable();
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x00])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([0x20])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([(addr>>16)&0xff])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([(addr>>8)&0xff])));
+  await serialController.write_raw(sws_wr_addr(0x0c, new Uint8Array([addr&0xff, 0x01])));
+  return await delay(300);
+}
+
+async function WriteFlashBlk(addr, data) {
+  await FlashWriteEnable();
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x00])));
+  let blk = new Uint8Array(4 + data.byteLength);
+  blk[0] = 0x02;
+  blk[1] = (addr>>16)&0xff;
+  blk[2] = (addr>>8)&0xff;
+  blk[3] = addr&0xff;
+  blk.set(data, 4);
+  await WriteFifo(0x0c, blk);
+  await serialController.write_raw(sws_wr_addr(0x0d, new Uint8Array([0x01])));
+  return await delay(10);
+}
+
+async function SoftResetMSU() {
+  return await serialController.write_raw(sws_wr_addr(0x06f, new Uint8Array([0x20])));
+}
+
+async function Activate(tim) {
+  let blk = sws_wr_addr(0x0602, new Uint8Array([0x05]));
+  let s = '复位 DTR/RTS (100 ms)...';
+  swrite.innerHTML = s;
+  log(s);
+  await serialController.reset(100);
+  log('软复位 MCU');
+  await SoftResetMSU();
+  s = '激活中 (' + (tim/1000.0) + ' 秒)...';
+  swrite.innerHTML = s;
+  log(s);
+  let t = new Date().getTime();
+  while (new Date().getTime() - t < tim) {
+    await serialController.write_raw(blk);
+  }
+  await serialController.write_raw(sws_wr_addr(0x00b2, new Uint8Array([55])));
+  await serialController.write_raw(blk);
+  return await FlashWakeUp();
+}
+
+/* ---- Main flash write routine ---- */
+async function FlashWrite() {
+  if (firmwareArray == null || connect.opened == false) return;
+  let t = new Date().getTime();
+  updateStatus('busy', '激活设备中...');
+  await Activate(uatime.value);
+  await FlashWriteEnable();
+  await FlashUnlock();
+  await delay(1500);
+  log('开始写入 ' + firmwareArray.byteLength + ' 字节到闪存...');
+  updateStatus('busy', '正在擦除并写入闪存...');
+  let len = firmwareArray.byteLength;
+  let addr = 0;
+  let sblk = 256; // max spi-flash fifo = 256
+  while (len > 0) {
+    if ((addr & 0x0fff) == 0) {
+      let pct = Math.floor(addr / (firmwareArray.byteLength * 1.0) * 100);
+      let s = pct + '% 扇区擦除 @ 0x' + hex(addr, 6);
+      console.log(s);
+      swrite.innerHTML = s;
+      setProgress(pct, s);
+      await SectorErase(addr);
+    }
+    if (len < sblk) sblk = len;
+    let pct = Math.floor(addr / (firmwareArray.byteLength * 1.0) * 100);
+    let s = pct + '% 写入 ' + sblk + ' 字节 @ 0x' + hex(addr, 6);
+    console.log(s);
+    swrite.innerHTML = s;
+    setProgress(pct, s);
+    await WriteFlashBlk(addr, new Uint8Array(firmwareArray.slice(addr, addr + sblk)));
+    addr += sblk;
+    len -= sblk;
+  }
+  swrite.innerHTML = '✅ 烧录完成';
+  setProgress(100, '100% · 完成');
+  log('烧录完成 (耗时 ' + ((new Date().getTime()-t)/1000.0).toFixed(1) + ' 秒)');
+  log('软复位 MCU...');
+  updateStatus('connected', '烧录完成 · 设备已复位');
+  return await SoftResetMSU();
+}
+
+/* ---- Disconnect ---- */
+async function DeviceStop() {
+  hideProgress();
+  return serialController.close();
+}
+
+/* ---- Button handlers ---- */
+connect.addEventListener('pointerdown', () => {
+  if (connect.value == '关闭串口') {
+    DeviceStop();
+  } else {
+    serialController.init();
+  }
+});
+
+fwriter.onclick = async function() {
+  fwriter.disabled = true;
+  bunlock.disabled = true;
+  berase.disabled = true;
+  breset.disabled = true;
+  connect.disabled = true;
+  await FlashWrite();
+  connect.disabled = false;
+  bunlock.disabled = false;
+  berase.disabled = false;
+  breset.disabled = false;
+  fwriter.disabled = false;
+};
+
+bunlock.onclick = async function() {
+  fwriter.disabled = true;
+  bunlock.disabled = true;
+  berase.disabled = true;
+  breset.disabled = true;
+  connect.disabled = true;
+  updateStatus('busy', '解锁闪存中...');
+  await Activate(uatime.value);
+  swrite.innerHTML = '✅ 已解锁';
+  log('开始解锁闪存 (约 3.5 秒)...');
+  await FlashWriteEnable();
+  await FlashUnlock();
+  await delay(3500);
+  log('解锁完成');
+  updateStatus('connected', '闪存已解锁');
+  connect.disabled = false;
+  bunlock.disabled = false;
+  berase.disabled = false;
+  breset.disabled = false;
+  if (connect.opened && firmwareArray != null) fwriter.disabled = false;
+};
+
+berase.onclick = async function() {
+  fwriter.disabled = true;
+  bunlock.disabled = true;
+  berase.disabled = true;
+  breset.disabled = true;
+  connect.disabled = true;
+  updateStatus('busy', '擦除全部闪存中...');
+  await Activate(uatime.value);
+  swrite.innerHTML = '✅ 已擦除';
+  log('擦除全部闪存 (约 3.5 秒)...');
+  await FlashWriteEnable();
+  await FlashEraseAll();
+  await delay(3500);
+  log('擦除完成');
+  updateStatus('connected', '闪存已擦除');
+  connect.disabled = false;
+  bunlock.disabled = false;
+  berase.disabled = false;
+  breset.disabled = false;
+  if (connect.opened && firmwareArray != null) fwriter.disabled = false;
+};
+
+breset.onclick = async function() {
+  fwriter.disabled = true;
+  bunlock.disabled = true;
+  berase.disabled = true;
+  breset.disabled = true;
+  connect.disabled = true;
+  updateStatus('busy', '复位 MCU 中...');
+  await Activate(uatime.value);
+  swrite.innerHTML = '';
+  log('软复位 MCU...');
+  await SoftResetMSU();
+  log('复位完成');
+  updateStatus('connected', 'MCU 已复位');
+  connect.disabled = false;
+  bunlock.disabled = false;
+  berase.disabled = false;
+  breset.disabled = false;
+  if (connect.opened && firmwareArray != null) fwriter.disabled = false;
+};
+
+/* ---- File selector ---- */
+ufile.onclick = function() { ufile.value = ""; };
+
+window.onload = function() {
+  document.querySelector("#file").addEventListener("change", function() {
+    var reader = new FileReader();
+    reader.onload = function() {
+      firmwareArray = this.result;
+      log("已选择文件，大小: " + firmwareArray.byteLength + " 字节");
+      // Check Telink magic: 0x544C4E4B = "TLNK"
+      if (firmwareArray.byteLength < 16 ||
+          (new Uint32Array(firmwareArray.slice(8,12)))[0] !== 0x544C4E4B) {
+        log("❌ 所选文件不是有效的 Telink 固件 (.bin)");
+        alert("所选文件不是有效的 Telink 固件 (.bin)");
+        firmwareArray = null;
+        return;
+      }
+      log("✅ 固件校验通过: " + firmwareArray.byteLength + " 字节");
+      if (connect.opened) {
+        fwriter.disabled = false;
+        swrite.innerHTML = '就绪 · 点击「写入闪存」开始烧录';
+      }
+    };
+    if (this.files[0] != null)
+      reader.readAsArrayBuffer(this.files[0]);
+    else
+      log("未选择文件");
+  }, false);
+};
+
+//---------------------------------
+/* ---- Serial Controller (Web Serial API) ---- */
+class SerialController {
+  async init(init_cb) {
+    if ('serial' in navigator) {
+      try {
+        connect.disabled = true;
+        this.port = await navigator.serial.requestPort();
+        await this.port.open({
+          baudRate: Number(ubaud.value),
+          baudrate: Number(ubaud.value),
+          bufferSize: 240,
+          buffersize: 240
+        });
+        this.writer = this.port.writable.getWriter();
+        console.log('DTR, RTS on.');
+        await this.port.setSignals({dataTerminalReady: false, requestToSend: false});
+        connect.value = '关闭串口';
+        connect.innerHTML = '🔌 关闭串口';
+        log('✅ USB 串口已打开 (波特率: ' + ubaud.value + ')');
+        updateStatus('connected', '串口已连接 · 波特率 ' + ubaud.value);
+        connect.opened = true;
+        berase.disabled = false;
+        bunlock.disabled = false;
+        breset.disabled = false;
+        if (firmwareArray != null) {
+          fwriter.disabled = false;
+          swrite.innerHTML = '就绪 · 点击「写入闪存」开始烧录';
+        }
+        if (typeof init_cb == 'function') await init_cb(this.port);
+      }
+      catch (err) {
+        log('❌ 打开串口出错: ' + err.message);
+        updateStatus('error', '串口打开失败');
+        berase.disabled = true;
+        bunlock.disabled = true;
+        breset.disabled = true;
+        fwriter.disabled = true;
+      }
+      connect.disabled = false;
+    }
+    else {
+      log('⚠️ 当前浏览器未启用 Web Serial API。请开启:');
+      log('   chrome://flags/#enable-experimental-web-platform-features');
+      log('   edge://flags/#enable-experimental-web-platform-features');
+      alert('当前浏览器未启用 Web Serial API。\n请访问以下地址并启用实验性 Web 平台功能:\n\nchrome://flags/#enable-experimental-web-platform-features\nedge://flags/#enable-experimental-web-platform-features');
+      connect.disabled = false;
+      connect.opened = false;
+      bunlock.disabled = true;
+      berase.disabled = true;
+      breset.disabled = true;
+      fwriter.disabled = true;
+    }
+  }
+
+  async write_raw(data) {
+    return await this.writer.write(data);
+  }
+
+  async reset(t_ms) {
+    console.log('DTR, RTS off.');
+    await this.port.setSignals({dataTerminalReady: true, requestToSend: true});
+    await delay(t_ms);
+    console.log('DTR, RTS on.');
+    return await this.port.setSignals({dataTerminalReady: false, requestToSend: false});
+  }
+
+  async close() {
+    fwriter.disabled = true;
+    swrite.innerHTML = '';
+    hideProgress();
+    try {
+      await this.writer.close();
+      await this.port.close();
+    } catch(e) { console.log('Close error:', e); }
+    connect.value = '打开串口';
+    connect.innerHTML = '🔗 打开串口';
+    connect.opened = false;
+    fwriter.disabled = true;
+    bunlock.disabled = true;
+    berase.disabled = true;
+    breset.disabled = true;
+    log('🔌 USB 串口已关闭');
+    updateStatus('', '串口已关闭');
+    connect.disabled = false;
+  }
+}
+
+var serialController = new SerialController();
+</script>
+</body>
+</html>
